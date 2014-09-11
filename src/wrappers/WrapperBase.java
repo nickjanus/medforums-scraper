@@ -16,6 +16,7 @@ import json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+import crawler.DuplicateThreadException;
 import structures.Post;
 
 /**
@@ -40,7 +41,7 @@ public abstract class WrapperBase {
 	SimpleDateFormat m_dateParser, m_dateFormatter;
 	
 	//parse the given HTML and extract the discussion posts 
-	public boolean parseHTML(String filename) {
+	public boolean parseHTML(String filename) throws DuplicateThreadException {
 		try {
 			return parseHTML(Jsoup.parse(new File(filename), "UTF-8"));
 		} catch (IOException e) {
@@ -51,7 +52,7 @@ public abstract class WrapperBase {
 	}
 
 	//extract the threaded discussion from the corresponding website
-	abstract protected boolean parseHTML(Document doc); 
+	abstract protected boolean parseHTML(Document doc) throws DuplicateThreadException; 
 	abstract protected String extractReplyToID(String text);
 	
 	protected String parseDate(String date) throws ParseException {

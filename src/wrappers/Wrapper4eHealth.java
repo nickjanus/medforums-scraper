@@ -165,10 +165,12 @@ public class Wrapper4eHealth extends WrapperBase {
 		}
 	}
 
+	/*
 	public static void main(String[] args) {
 		Wrapper4eHealth wrapper = new Wrapper4eHealth();
 		wrapper.parseHTML("./data/HTML/eHealth/Cancer/sample.htm");
 		wrapper.save2Json("./data/json/eHealth/Cancer/sample.json");
 	}
+	*/
 
 }

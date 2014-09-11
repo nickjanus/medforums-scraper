@@ -132,6 +132,7 @@ public class Wrapper4HealthBoards extends WrapperBase {
 			return text.substring(start+1);
 	}
 
+	/*
 	public static void main(String[] args) {
 		Wrapper4HealthBoards wrapper = new Wrapper4HealthBoards();
 //		wrapper.parseHTML("./data/HTML/healthboards/Arthritis/sample.htm");
@@ -141,4 +142,5 @@ public class Wrapper4HealthBoards extends WrapperBase {
 		wrapper.parseHTML("./data/HTML/healthboards/Stress/error.htm");
 		wrapper.save2Json("./data/json/healthboards/Stress/error.json");
 	}
+	*/
 }

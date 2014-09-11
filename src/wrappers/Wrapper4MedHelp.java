@@ -137,11 +137,13 @@ public class Wrapper4MedHelp extends WrapperBase {
 		return text.substring(4);//remove 'To: '
 	}
 
+	/*
 	public static void main(String[] args) {
 		Wrapper4MedHelp wrapper = new Wrapper4MedHelp();
 		wrapper.parseHTML("./data/HTML/MedHelp/Anxiety/sample.htm");
 		wrapper.save2Json("./data/json/MedHelp/Anxiety/sample.json");
 
 	}
+	*/
 
 }

@@ -5,13 +5,16 @@ package wrappers;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Set;
 
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import crawler.DuplicateThreadException;
 import structures.Post;
-
 
 /**
  * @author hongning
@@ -21,15 +24,19 @@ import structures.Post;
  */
 public class Wrapper4WebMD extends WrapperBase {
 	//TODO: You need to extend this wrapper to deal with threaded discussion across multiple pages
-	// 1. get the right "next page"
-	// 2. avoid any duplication
-	// 3. extract the right reply-to relation when across pages
-	// 4. clean up the local structures for processing different threaded discussions 
+	// 1. get the right "next page" - done
+	// 2. avoid any duplication - done
+	// 3. extract the right reply-to relation when across pages - done
+	// 4. clean up the local structures for processing different threaded discussions - done
+	Hashtable<String, String> replyTable = new Hashtable<String, String>(); //key: post id, val: page relative url
+	Set<String> threadsVisited = new HashSet<String>();
+	int page = 0; //incremented at top of parse function
 	
 	public Wrapper4WebMD() {
 		super();
 		
-		m_dateParser = new SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (z)");//Date format in this forum:  Mon Sep 17 2012 13:47:16 GMT-0400 (EDT)
+		//Date format in this forum:  Mon Sep 17 2012 13:47:16 GMT-0400 (EDT)
+		m_dateParser = new SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (z)");
 	}
 		
 	protected String parseDate(Element dateElm) throws ParseException {
@@ -40,19 +47,43 @@ public class Wrapper4WebMD extends WrapperBase {
 		int end = text.indexOf("\'", start);
 		return super.parseDate(text.substring(start, end));
 	}
+
+	//reset after a thread is finished
+	public void reset() {
+		m_posts.clear();
+		page = 0;
+		replyTable.clear();
+		m_threadTitle = "";
+		m_threadURL = "";
+	}
+	
+	public String getNextPage(Document doc) {
+		String url = "";
+		Element pages = doc.getElementsByClass("pages").first();
+		Elements links = pages.getElementsByTag("a");
+		for (Element link : links) {
+		  if ("ctrs('srb-tpage_next');".equals(link.attr("onclick"))) {
+			  url = m_threadURL + link.attr("href");
+			  break;
+		  }
+		}
+		
+		return url;
+	}
 	
 	@Override
 	protected String extractReplyToID(String text) {
-		return text.replaceAll("\\?pg=\\d+#", "/");//normlize the replyToID to the corresponding postID
+		return replyTable.get(text); //exchange the replyTo url with the corresponding post url
 	}
 
-	@Override
-	protected boolean parseHTML(Document doc) {
+	@Override 
+	protected boolean parseHTML(Document doc) throws DuplicateThreadException {
+		int index = 0;
 		Elements postElms = doc.getElementsByClass("thread_fmt"), tmpElms;
 		Element tmpElmA, tmpElmB;
 		
 		String firstItemDate = null;
-		
+		page++;
 		//get thread information
 		if (m_posts.isEmpty()) {
 			tmpElmA = doc.getElementsByClass("firstitem_mid_fmt").first();
@@ -73,12 +104,17 @@ public class Wrapper4WebMD extends WrapperBase {
 			//extract thread ID
 			tmpElmB = tmpElmA.getElementsByClass("exchange-reply-form").first();
 			m_threadURL = tmpElmB.attr("action");
+			if (threadsVisited.contains(m_threadURL)) {throw new DuplicateThreadException();}
+			threadsVisited.add(m_threadURL);
 		}
-		
 		for(Element elm:postElms){
+			
 			//get post ID
 			tmpElmA = elm.getElementsByClass("exchange-reply-form").first();
 			Post p = new Post(tmpElmA.attr("action"));
+			
+			//add entry to reply table, postID => postID by page
+			replyTable.put((m_threadURL + "?pg=" + Integer.toString(page) + "#" + Integer.toString(index)), p.getID());
 			
 			//get timestamp of this post
 			tmpElmA = elm.getElementsByClass("posted_fmt").first();	
@@ -96,9 +132,20 @@ public class Wrapper4WebMD extends WrapperBase {
 			
 			//get author information
 			tmpElmA = elm.getElementsByClass("post_hdr_fmt").first();
-			tmpElmB = tmpElmA.getElementsByTag("a").first();
-			p.setAuthor(tmpElmB.text());
-			p.setAuthorID(tmpElmB.attr("href"));	
+		      tmpElmB = tmpElmA.getElementsByTag("a").first();
+		      if (tmpElmB != null) {
+		        p.setAuthor(tmpElmB.text());
+		        p.setAuthorID(tmpElmB.attr("href"));
+		      } else {
+		        /*
+		         * In the anonymous case, author names are 
+		         * everything before the first space.
+		         */
+		        String postAuthor =  tmpElmA.text().replaceAll(" .+$","");
+		        p.setAuthor(postAuthor);
+		        p.setAuthorID(postAuthor);
+		        //System.out.println("Author: " + postAuthor);
+		      }	
 			
 			//get reply-to
 			tmpElms = tmpElmA.getElementsByClass("mlResponseTo");
@@ -117,13 +164,14 @@ public class Wrapper4WebMD extends WrapperBase {
 			}
 			p.setContent(tmpElmA.text());
 			
-			m_posts.add(p);			
+			m_posts.add(p);		
+			index++;
 		}
 		return !m_posts.isEmpty();
 	}	
 	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws DuplicateThreadException {
 		Wrapper4WebMD wrapper = new Wrapper4WebMD();
 		wrapper.parseHTML("./data/HTML/WebMD/Allergies/sample.htm");
 		wrapper.save2Json("./data/json/WebMD/Allergies/sample.json");

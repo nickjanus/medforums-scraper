@@ -130,6 +130,7 @@ public class Wrapper4WebMD extends WrapperBase {
 				p.setDate(firstItemDate);
 			}
 			
+			//TODO use reply-to element for properly parsing anon authors, responders, extra credit?
 			//get author information
 			tmpElmA = elm.getElementsByClass("post_hdr_fmt").first();
 		      tmpElmB = tmpElmA.getElementsByTag("a").first();

@@ -95,15 +95,35 @@ public class Post {
 		m_ID = ID;
 	}
 	
+	public Post(JSONObject json) {
+		try {
+			m_ID = json.getString("postID");
+			setAuthor(json.getString("author"));
+			setAuthorID(json.getString("authorID"));
+			
+			if(json.has("replyTo"))
+				setReplyToID(json.getString("replyTo"));
+			
+			setDate(json.getString("date"));
+			
+			if (json.has("title"))
+				setTitle(json.getString("title"));
+			
+			setContent(json.getString("content"));
+		} catch (JSONException e) {
+			//e.printStackTrace();
+		}
+	}
+	
 	public JSONObject getJSON() throws JSONException {
 		JSONObject json = new JSONObject();
-		json.put("postID", m_ID);
-		json.put("author", m_author);
-		json.put("authorID", m_authorID);
-		json.put("replyTo", m_replyToID);
-		json.put("date", m_date);
-		json.put("title", m_title);
-		json.put("content", m_content);
+		json.put("postID", m_ID);//must contain
+		json.put("author", m_author);//must contain
+		json.put("authorID", m_authorID);//must contain
+		json.put("replyTo", m_replyToID);//might be missing
+		json.put("date", m_date);//must contain
+		json.put("title", m_title);//might be missing
+		json.put("content", m_content);//must contain
 		
 		return json;
 	}

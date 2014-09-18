@@ -124,6 +124,6 @@ public class Crawler {
 	
 	public static void main(String[] args) throws DuplicateThreadException {
 		Crawler robot = new Crawler();
-		robot.start("http://exchanges.webmd.com/organ-transplant-exchange/forum/index",  "organ-transplant-exchange");
+		robot.start("http://exchanges.webmd.com/urology/forum/index",  "urology");
 	}
 }

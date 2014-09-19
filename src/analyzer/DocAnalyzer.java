@@ -6,12 +6,15 @@ package analyzer;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map.Entry;
 
 import json.JSONArray;
 import json.JSONException;
@@ -19,12 +22,16 @@ import json.JSONObject;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
+import opennlp.tools.util.InvalidFormatException;
 
 import org.tartarus.snowball.SnowballStemmer;
 import org.tartarus.snowball.ext.englishStemmer;
 import org.tartarus.snowball.ext.porterStemmer;
 
 import structures.Post;
+import au.com.bytecode.opencsv.CSV;
+import au.com.bytecode.opencsv.CSVWriteProc;
+import au.com.bytecode.opencsv.CSVWriter;
 
 /**
  * @author hongning
@@ -35,6 +42,7 @@ public class DocAnalyzer {
 	String m_threadURL;
 	String m_threadTitle;
 	ArrayList<JSONObject> m_threads;
+	HashMap<String,Integer> wordCount;
 	
 	SimpleDateFormat m_dateFormatter;
 	
@@ -44,11 +52,26 @@ public class DocAnalyzer {
 	public DocAnalyzer() {
 		m_threads = new ArrayList<JSONObject>();
 		m_dateFormatter = new SimpleDateFormat("yyyyMMdd-HH:mm:ss Z");//standard date format for this project
+		wordCount = new HashMap<String,Integer>();
 	}
 	
 	//check if students' crawled json files follows instruction
 	//if you decide to use the sample code for your homework assignment, this is the place you can perform tokenization/stemming/word counting
 	public void AnalyzeThreadedDiscussion(JSONObject json) {		
+		Post post;
+		Tokenizer tokenizer = null;
+		try {
+			tokenizer = new TokenizerME(new TokenizerModel(new FileInputStream("./data/Model/en-token.bin")));
+		} catch (InvalidFormatException e1) {
+			e1.printStackTrace();
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		SnowballStemmer stemmer = new englishStemmer();
+		String[] subjects = {null,null};
+		
 		try {
 			json.getString("title");
 			json.getString("URL");
@@ -56,7 +79,34 @@ public class DocAnalyzer {
 			JSONArray jarray = json.getJSONArray("thread");
 			m_existingPostID = new HashSet<String>(); 
 			for(int i=0; i<jarray.length(); i++) {
-				checkPostFormat(new Post(jarray.getJSONObject(i)));
+				post = new Post(jarray.getJSONObject(i));
+				checkPostFormat(post);
+				if (post.getTitle() != null) {subjects[0] = post.getTitle();} 
+										else {subjects[0] = null;}
+				if (post.getContent() != null) {subjects[1] = post.getContent();} 
+										  else {subjects[1] = null;}
+				
+				//1. tokenize
+				for(String subject:subjects) {
+					if (subject != null) {
+						for(String token:tokenizer.tokenize(subject)){
+							
+							//2. normalize
+							 token = token.replaceAll("\\p{P}", "").toLowerCase();
+							
+							//3. stem
+							stemmer.setCurrent(token);
+							if (stemmer.stem())
+								token = stemmer.getCurrent();
+							
+							//4. record result
+							if (wordCount.containsKey(token))
+								wordCount.put(token, wordCount.get(token) + 1);
+							else
+								wordCount.put(token, 1);
+						}
+					}
+				}
 			}
 		} catch (JSONException e) {
 			e.printStackTrace();
@@ -64,6 +114,22 @@ public class DocAnalyzer {
 		
 		//store this into memory for later use
 		m_threads.add(json);
+	}
+	
+	public void saveInfoToCSV(String filename) {
+		CSV csv = CSV
+			    .separator(',')  // delimiter of fields
+			    .quote('"')      // quote character
+			    .create();       // new instance is immutable
+		
+		csv.write(filename + ".csv", new CSVWriteProc() {
+		    public void process(CSVWriter out) {
+		    	for(Entry<String, Integer> entry: wordCount.entrySet())
+		    	{
+		    		out.writeNext(entry.getKey(), entry.getValue().toString());
+		    	}
+		   }
+		});
 	}
 	
 	//check format for each post
@@ -182,6 +248,7 @@ public class DocAnalyzer {
 		
 		//when we want to execute it in command line
 		analyzer.LoadDirectory(args[0], args[1]);
+		analyzer.saveInfoToCSV(args[2]);
 	}
 
 }

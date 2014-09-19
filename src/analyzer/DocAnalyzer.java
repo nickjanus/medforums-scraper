@@ -60,6 +60,7 @@ public class DocAnalyzer {
 	public void AnalyzeThreadedDiscussion(JSONObject json) {		
 		Post post;
 		Tokenizer tokenizer = null;
+		String[] unigrams, bigrams;
 		try {
 			tokenizer = new TokenizerME(new TokenizerModel(new FileInputStream("./data/Model/en-token.bin")));
 		} catch (InvalidFormatException e1) {
@@ -89,7 +90,13 @@ public class DocAnalyzer {
 				//1. tokenize
 				for(String subject:subjects) {
 					if (subject != null) {
-						for(String token:tokenizer.tokenize(subject)){
+						unigrams = tokenizer.tokenize(subject);
+						bigrams = new String[unigrams.length-1];
+						for(int x = 0; x < unigrams.length - 1; x++) {
+							bigrams[x] = unigrams[x] + " " + unigrams[x+1];
+						}
+						
+						for(String token:bigrams){
 							
 							//2. normalize
 							 token = token.replaceAll("\\p{P}", "").toLowerCase();
